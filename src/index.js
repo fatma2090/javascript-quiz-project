@@ -55,11 +55,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Show first question
   showQuestion();
-
+  if (typeof showQuestion === 'function') {
+    showQuestion();
+} else {
+    console.error("showQuestion function is not defined.");
+}
 
   /************  TIMER  ************/
 
-  let timer;
+let timerValue = 120;
+
+function updateTimerDisplay() {
+    const minutes = Math.floor(timerValue / 60).toString().padStart(2, "0");
+    const seconds = (timerValue % 60).toString().padStart(2, "0");
+    timeRemainingContainer.innerText = `${minutes}:${seconds}`;
+}
+
+function updateTimer() {
+    if (timerValue > 0) {
+        timerValue--; 
+        updateTimerDisplay(); 
+    } else {
+        clearInterval(timer); 
+        console.log("Time's up!");
+    }
+}
+updateTimerDisplay();
+
+let timer = setInterval(updateTimer, 1000);
+
 
 
   /************  EVENT LISTENERS  ************/
@@ -98,19 +122,19 @@ document.addEventListener("DOMContentLoaded", () => {
     //
     // 1. Show the question
     // Update the inner text of the question container element and show the question text
-
+    questionContainer.innerText = question.text;
     
     // 2. Update the green progress bar
     // Update the green progress bar (div#progressBar) width so that it shows the percentage of questions answered
     
-    progressBar.style.width = `65%`; // This value is hardcoded as a placeholder
+    progressBar.style.width = `${(quiz.currentQuestionIndex / questions.length) * 100}%`; //`65%`; // This value is hardcoded as a placeholder
 
 
 
     // 3. Update the question count text 
     // Update the question count (div#questionCount) show the current question out of total questions
     
-    questionCount.innerText = `Question 1 of 10`; //  This value is hardcoded as a placeholder
+    questionCount.innerText = `Question ${quiz.currentQuestionIndex + 1} of ${questions.length}`; //`Question 1 of 10`; //  This value is hardcoded as a placeholder
 
 
     
@@ -127,7 +151,18 @@ document.addEventListener("DOMContentLoaded", () => {
       // Hint 2: You can use the `element.type`, `element.name`, and `element.value` properties to set the type, name, and value of an element.
       // Hint 3: You can use the `element.appendChild()` method to append an element to the choices container.
       // Hint 4: You can use the `element.innerText` property to set the inner text of an element.
-
+      question.choices.forEach((choice, index) => {
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.name = "choice";
+        input.value = choice;
+        const label = document.createElement("label");
+        label.innerText = choice;
+        choiceContainer.appendChild(input);
+        choiceContainer.appendChild(label);
+        choiceContainer.appendChild(document.createElement("br"));
+    });
+}
   }
 
 
@@ -140,18 +175,31 @@ document.addEventListener("DOMContentLoaded", () => {
     // YOUR CODE HERE:
     //
     // 1. Get all the choice elements. You can use the `document.querySelectorAll()` method.
-
+    const choiceElements = document.querySelectorAll("input[type='radio'][name='choice']");
 
     // 2. Loop through all the choice elements and check which one is selected
       // Hint: Radio input elements have a property `.checked` (e.g., `element.checked`).
       //  When a radio input gets selected the `.checked` property will be set to true.
       //  You can use check which choice was selected by checking if the `.checked` property is true.
-
+      choiceElements.forEach((choiceElement) => {
+        if (choiceElement.checked) {
+            selectedAnswer = choiceElement.value;
+        }
+    });
       
     // 3. If an answer is selected (`selectedAnswer`), check if it is correct and move to the next question
       // Check if selected answer is correct by calling the quiz method `checkAnswer()` with the selected answer.
       // Move to the next question by calling the quiz method `moveToNextQuestion()`.
       // Show the next question by calling the function `showQuestion()`.
+      if (selectedAnswer) {
+        // Check if selected answer is correct
+        quiz.checkAnswer(selectedAnswer);
+        // Move to the next question
+        quiz.moveToNextQuestion();
+        // Show the next question
+        showQuestion();
+    }
+
   }  
 
 
@@ -168,7 +216,80 @@ document.addEventListener("DOMContentLoaded", () => {
     endView.style.display = "flex";
     
     // 3. Update the result container (div#result) inner text to show the number of correct answers out of total questions
-    resultContainer.innerText = `You scored 1 out of 1 correct answers!`; // This value is hardcoded as a placeholder
-  }
+    resultContainer.innerText = `You scored ${quiz.correctAnswers} out of ${questions.length} correct answers!`; //`You scored 1 out of 1 correct answers!`; // This value is hardcoded as a placeholder
   
+    // Restart Quiz button event listener
+const restartButton = document.querySelector("#restartButton");
+restartButton.addEventListener("click", () => {
+    // Hide the end view
+    endView.style.display = "none";
+    // Show the quiz view
+    quizView.style.display = "block";
+    // Reset the quiz
+    quiz.currentQuestionIndex = 0;
+    quiz.correctAnswers = 0;
+    quiz.shuffleQuestions();
+    // Show the first question
+    showQuestion();
+});
+
+// Add event listener to the Next button
+nextButton.addEventListener("click", nextButtonHandler);
+
+// Show the first question
+showQuestion();
+  
+
+//////////  DAY 4   ////////
+
+// Timer Countdown
+function startTimer() {
+  timer = setInterval(() => {
+      quiz.timeRemaining--;
+      const minutes = Math.floor(quiz.timeRemaining / 60).toString().padStart(2, "0");
+      const seconds = (quiz.timeRemaining % 60).toString().padStart(2, "0");
+      timeRemainingContainer.innerText = `${minutes}:${seconds}`;
+
+      if (quiz.timeRemaining === 0) {
+          clearInterval(timer);
+          showResults();
+      }
+  }, 1000);
+}
+
+// Clear the timer interval when the quiz ends
+function showResults() {
+  // Clear the timer interval
+  clearInterval(timer);
+
+  // Hide the quiz view
+  quizView.style.display = "none";
+  // Show the end view
+  endView.style.display = "flex";
+  // Display the final score
+  resultContainer.innerText = `You scored ${quiz.correctAnswers} out of ${questions.length} correct answers!`;
+}
+
+// Restart the timer when the quiz is restarted
+function restartQuiz() {
+  // Reset the timeRemaining property of the Quiz instance to the initial value
+  quiz.timeRemaining = quizDuration;
+  // Update the timer text in the quiz view to the initial value
+  const minutes = Math.floor(quiz.timeRemaining / 60).toString().padStart(2, "0");
+  const seconds = (quiz.timeRemaining % 60).toString().padStart(2, "0");
+  timeRemainingContainer.innerText = `${minutes}:${seconds}`;
+  // Start the timer countdown again
+  startTimer();
+}
+
+// Restart Quiz button event listener
+const restartButton = document.querySelector("#restartButton");
+restartButton.addEventListener("click", () => {
+  // Restart the quiz
+  restartQuiz();
+});
+
+// Start the timer countdown when the quiz starts
+startTimer();
+
 });
